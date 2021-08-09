@@ -2,7 +2,7 @@
 FROM openjdk:8-jdk-alpine as builder
 WORKDIR /app
 COPY . /app
-RUN ./mvnw clean package -DskipTests -Dhttps.protocols=TLSv1.2
+RUN ./mvnw clean package -DskipTests
 
 #### Stage 2: A minimal docker image with command to run the app 
 FROM openjdk:8-jre-alpine as runtime
