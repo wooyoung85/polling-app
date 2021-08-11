@@ -1,0 +1,56 @@
+# Docker Registry 와 Service Connection 하는 부분은 dev.azure.com 에서 설정해야함
+
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  tag: '$(Build.BuildId)'
+  MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
+  MAVEN_OPTS: '-Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
+
+steps:
+- task: Cache@2
+  inputs:
+    key: 'maven | "$(Agent.OS)" | **/pom.xml'
+    restoreKeys: |
+      maven | "$(Agent.OS)"
+      maven
+    path: $(MAVEN_CACHE_FOLDER)
+  displayName: Cache Maven local repo
+
+- task: Maven@3
+  displayName: 'Maven Build'
+  inputs:
+    mavenPomFile: 'polling-app-server/pom.xml'
+    mavenOptions: '-Xmx3072m $(MAVEN_OPTS)'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.8'
+    jdkArchitectureOption: 'x64'
+    goals: 'clean package -DskipTests'
+
+- task: Docker@2
+  displayName: dockerLogin
+  inputs:
+    command: login
+    containerRegistry: SeegenePRContainerRegistry
+
+- task: Docker@2
+  displayName: dockerBuild
+  inputs:
+    repository: polling-app-server
+    command: build
+    Dockerfile: polling-app-server/Dockerfile
+    tags: |
+      $(tag)
+
+- task: Docker@2
+  displayName: dockerPush
+  inputs:
+    command: push
+    containerRegistry: SeegenePRContainerRegistry
+    repository: polling-app-server
+    tags: |
+      $(tag)
